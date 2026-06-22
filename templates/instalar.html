@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <!-- Etapa 1: CEP e Fachada -->
+    <div id="step1" class="bg-gray-900 p-6 rounded-lg border border-gray-700">
+        <h2 class="text-xl mb-4">Busca de Endereço</h2>
+        <div class="flex gap-4">
+            <input type="text" id="cep" placeholder="CEP" class="p-2 bg-gray-800 rounded">
+            <input type="text" id="fachada" placeholder="Fachada" class="p-2 bg-gray-800 rounded">
+            <button onclick="buscarViabilidade()" class="bg-blue-600 px-4 py-2 rounded">Buscar</button>
+        </div>
+    </div>
+
+    <!-- Etapa 2: Resultados (Invisível até a busca) -->
+    <div id="step2" class="hidden bg-gray-900 p-6 rounded-lg border border-gray-700">
+        <div id="viabilidadeResult"></div>
+    </div>
+</div>
+
+<script>
+async function buscarViabilidade() {
+    const data = { cep: document.getElementById('cep').value, fachada: document.getElementById('fachada').value };
+    const response = await fetch('/api/viabilidade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    const result = await response.json();
+
+    // Rastreabilidade no log do console
+    console.log("Rastreabilidade API:", result);
+
+    document.getElementById('step2').classList.remove('hidden');
+    document.getElementById('viabilidadeResult').innerHTML = `
+        <p>Status: ${result.status}</p>
+        <p>Inventory ID: ${result.inventoryId || 'Não encontrado'}</p>
+    `;
+}
+</script>
+{% endblock %}

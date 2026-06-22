@@ -1,0 +1,1 @@
+# As funções de agendamento foram movidas para modules/os_instalacao.py para centralizar a lógica do fluxo de OS.

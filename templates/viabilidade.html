@@ -1,0 +1,79 @@
+<!-- templates/viabilidade.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>Verificação de Viabilidade</h2>
+    <form id="viabilidadeForm">
+        <div class="form-group">
+            <label for="cep">CEP:</label>
+            <input type="text" id="cep" name="cep" required>
+        </div>
+        <div class="form-group">
+            <label for="fachada">Número/Fachada:</label>
+            <input type="text" id="fachada" name="fachada" required>
+        </div>
+        <div class="form-group">
+            <label for="cp_selection">Client Partner:</label>
+            <select id="cp_selection" name="cp_selection" required>
+                {% for cp in available_cps %}
+                <option value="{{ cp }}">{{ cp }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit">Verificar Viabilidade</button>
+    </form>
+
+    <div id="resultado" style="margin-top: 20px;">
+        <!-- O resultado da viabilidade será exibido aqui -->
+    </div>
+</div>
+
+<script>
+    document.getElementById('viabilidadeForm').addEventListener('submit', async function(event) {
+        event.preventDefault(); // Previne o envio padrão do formulário
+
+        const cep = document.getElementById('cep').value;
+        const fachada = document.getElementById('fachada').value;
+        const cp_selection = document.getElementById('cp_selection').value; // Pega o CP selecionado
+
+        const resultadoDiv = document.getElementById('resultado');
+        resultadoDiv.innerHTML = '<p>Verificando viabilidade...</p>';
+
+        try {
+            const response = await fetch('/viabilidade', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    cep: cep,
+                    fachada: fachada,
+                    cp_selection: cp_selection // Envia o CP selecionado
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                resultadoDiv.innerHTML = `
+                    <h3>Resultado da Viabilidade:</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } else {
+                resultadoDiv.innerHTML = `
+                    <h3>Erro na Viabilidade:</h3>
+                    <p>Status: ${response.status}</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            }
+        } catch (error) {
+            resultadoDiv.innerHTML = `
+                <h3>Erro na Requisição:</h3>
+                <p>${error.message}</p>
+            `;
+            console.error('Erro:', error);
+        }
+    });
+</script>
+{% endblock %}

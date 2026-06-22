@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+    .flow-section { display: none; margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background-color: #f9f9f9; }
+    .flow-section.active { display: block; }
+    .status-message { margin-top: 10px; padding: 10px; border-radius: 4px; }
+    .status-message.error { background-color: #f8d7da; color: #721c24; border-color: #f5c6cb; }
+    .status-message.success { background-color: #d4edda; color: #155724; border-color: #c3e6cb; }
+    .status-message.info { background-color: #d1ecf1; color: #0c5460; border-color: #bee5eb; }
+    #slots-list label { display: block; margin-bottom: 5px; padding: 8px; border: 1px solid #eee; border-radius: 3px; background-color: #fff; cursor: pointer; }
+    #slots-list label:hover { background-color: #f0f0f0; }
+    #slots-list input[type="radio"]:checked + span { font-weight: bold; color: #007bff; }
+</style>
+
+<h2>Abertura de Ordem de Serviço de Instalação</h2>
+
+<form id="os-form">
+    <div id="address-viability-section" class="flow-section active">
+        <h3>1. Verificação de Endereço e Viabilidade</h3>
+        <div class="form-group">
+            <label for="cep">CEP:</label>
+            <input type="text" class="form-control" id="cep" name="cep" value="{{ os_data.cep }}" required>
+        </div>
+        <div class="form-group">
+            <label for="fachada">Número/Fachada:</label>
+            <input type="text" class="form-control" id="fachada" name="fachada" value="{{ os_data.fachada }}" required>
+        </div>
+        <div class="form-group">
+            <label for="cp_selection">Client Partner:</label>
+            <select class="form-control" id="cp_selection" name="cp_selection" required>
+                <option value="">Selecione um CP</option>
+                {% for cp in available_cps %}
+                    <option value="{{ cp }}" {% if os_data.cp_selection == cp %}selected{% endif %}>{{ cp }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {# REMOVIDO: Campo de Complemento (Opcional) da primeira etapa #}
+        <button type="button" class="btn btn-primary" id="btn-buscar-endereco">Buscar Endereço</button>
+        <div id="address-status-message" class="status-message" style="display:none;"></div>
+    </div>
+
+    <div id="complement-selection-section" class="flow-section">
+        <h3>1.5. Seleção de Complemento</h3>
+        <p><strong>Endereço:</strong> <span id="address-description-display"></span></p>
+        <div class="form-group">
+            <label for="complemento_selecionado">Complemento:</label>
+            <select class="form-control" id="complemento_selecionado" name="complemento_selecionado">
+                <option value="">Selecione um complemento (Opcional)</option>
+            </select>
+        </div>
+        <button type="button" class="btn btn-primary" id="btn-verificar-viabilidade">Verificar Viabilidade</button>
+        <div id="viability-status-message" class="status-message" style="display:none;"></div>
+    </div>
+
+    <div id="product-selection-section" class="flow-section">
+        <h3>2. Seleção de Produto e Agendamento</h3>
+        <p><strong>Endereço:</strong> <span id="product-address-description-display"></span></p>
+        <div class="form-group">
+            <label for="product_selection">Produto:</label>
+            <select class="form-control" id="product_selection" name="product_selection" required>
+                <option value="">Selecione um produto</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="data_inicio">Data Início:</label>
+            <input type="date" class="form-control" id="data_inicio" name="data_inicio" required>
+        </div>
+        <div class="form-group">
+            <label for="data_fim">Data Fim:</label>
+            <input type="date" class="form-control" id="data_fim" name="data_fim" required>
+        </div>
+        <button type="button" class="btn btn-primary" id="btn-buscar-slots">Buscar Slots</button>
+        <div id="slots-status-message" class="status-message" style="display:none;"></div>
+
+        <h4>Slots Disponíveis:</h4>
+        <div id="slots-list" class="form-group"></div>
+    </div>
+
+    <div id="confirmation-section" class="flow-section">
+        <h3>3. Confirmação da Ordem de Serviço</h3>
+        <p><strong>Endereço:</strong> <span id="final-address-description"></span></p>
+        <p><strong>Produto Selecionado:</strong> <span id="final-product-name"></span></p>
+        <p><strong>Slot Selecionado:</strong> <span id="final-slot-details"></span></p>
+        {# REMOVIDO: Campo de Complemento para OS (Opcional) da seção de confirmação #}
+        <button type="button" class="btn btn-success" id="btn-confirmar-os">Confirmar Ordem de Serviço</button>
+        <div id="os-creation-status-message" class="status-message" style="display:none;"></div>
+    </div>
+</form>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function() {
+        function showStatusMessage(selector, message, type) {
+            $(selector).removeClass('error success info').addClass(type).text(message).show();
+        }
+
+        function formatDate(date) {
+            const d = new Date(date);
+            let month = '' + (d.getMonth() + 1);
+            let day = '' + d.getDate();
+            const year = d.getFullYear();
+            if (month.length < 2) month = '0' + month;
+            if (day.length < 2) day = '0' + day;
+            return [year, month, day].join('-');
+        }
+
+        const today = new Date();
+        const nextWeek = new Date();
+        nextWeek.setDate(today.getDate() + 7);
+        $('#data_inicio').val(formatDate(today));
+        $('#data_fim').val(formatDate(nextWeek));
+
+        $('#btn-buscar-endereco').on('click', function() {
+            const cep = $('#cep').val();
+            const fachada = $('#fachada').val();
+            const cp_selection = $('#cp_selection').val();
+            // REMOVIDO: const complemento_viabilidade = $('#complemento_viabilidade').val();
+
+            if (!cep || !fachada || !cp_selection) {
+                showStatusMessage('#address-status-message', 'CEP, Fachada e Client Partner são obrigatórios.', 'error');
+                return;
+            }
+
+            showStatusMessage('#address-status-message', 'Buscando endereço e complementos...', 'info');
+
+            $.ajax({
+                url: '/api/buscar_endereco_e_complementos',
+                method: 'POST',
+                contentType: 'application/json',
+                // REMOVIDO: complemento_viabilidade do data
+                data: JSON.stringify({ cep: cep, fachada: fachada, cp_selection: cp_selection }),
+                success: function(response) {
+                    if (response.status === 'sucesso') {
+                        showStatusMessage('#address-status-message', response.message, 'success');
+                        const os_data = response.os_data;
+
+                        $('#address-description-display').text(os_data.address_description);
+                        $('#product-address-description-display').text(os_data.address_description);
+                        $('#final-address-description').text(os_data.address_description);
+
+                        // LÓGICA INTELIGENTE DE COMPLEMENTOS (AJAX)
+                        $('#complemento_selecionado').empty().append('<option value="">Selecione um complemento (Opcional)</option>');
+                        if (os_data.complements_found && os_data.complements_found.length > 0) {
+                            os_data.complements_found.forEach(function(comp_item) {
+                                let comp_data = null;
+
+                                if (comp_item.complement && comp_item.complement.complements && comp_item.complement.complements.length > 0) {
+                                    comp_data = comp_item.complement.complements[0];
+                                } else if (comp_item.value && comp_item.type) {
+                                    comp_data = comp_item;
+                                }
+
+                                if (comp_data) {
+                                    const desc = comp_data.description || comp_data.type;
+                                    const comp_text = `${desc}: ${comp_data.value}`;
+                                    $('#complemento_selecionado').append(
+                                        `<option value='${JSON.stringify(comp_data)}'>${comp_text}</option>`
+                                    );
+                                }
+                            });
+                        }
+
+                        $('.flow-section').removeClass('active');
+                        $('#complement-selection-section').addClass('active');
+                    } else {
+                        showStatusMessage('#address-status-message', `Erro: ${response.message}`, 'error');
+                    }
+                },
+                error: function(xhr) {
+                    const error_response = xhr.responseJSON || { message: 'Erro desconhecido.' };
+                    showStatusMessage('#address-status-message', `Erro: ${error_response.message}`, 'error');
+                }
+            });
+        });
+
+        $('#btn-verificar-viabilidade').on('click', function() {
+            // O addressId é recuperado da sessão no backend, não precisa ser passado do frontend aqui
+            // const address_id = "{{ os_data.addressId }}"; 
+            const cp_selection = $('#cp_selection').val();
+            const complemento_selecionado_json = $('#complemento_selecionado').val();
+
+            showStatusMessage('#viability-status-message', 'Verificando viabilidade...', 'info');
+
+            $.ajax({
+                url: '/verificar_viabilidade_com_complemento',
+                method: 'POST',
+                contentType: 'application/json',
+                // Passa apenas o cp_selection e o complemento selecionado
+                data: JSON.stringify({ cp_selection: cp_selection, complemento_selecionado: complemento_selecionado_json }),
+                success: function(response) {
+                    if (response.status === 'sucesso') {
+                        showStatusMessage('#viability-status-message', response.message, 'success');
+                        const os_data = response.os_data;
+
+                        $('#product_selection').empty().append('<option value="">Selecione um produto</option>');
+                        if (os_data.produtos_viaveis && os_data.produtos_viaveis.length > 0) {
+                            os_data.produtos_viaveis.forEach(function(product) {
+                                $('#product_selection').append(
+                                    `<option value='${JSON.stringify(product)}'>${product.name} (${product.productType})</option>`
+                                );
+                            });
+                        }
+
+                        $('.flow-section').removeClass('active');
+                        $('#product-selection-section').addClass('active');
+                    } else {
+                        showStatusMessage('#viability-status-message', `Erro: ${response.message}`, 'error');
+                    }
+                },
+                error: function(xhr) {
+                    const error_response = xhr.responseJSON || { message: 'Erro desconhecido.' };
+                    showStatusMessage('#viability-status-message', `Erro: ${error_response.message}`, 'error');
+                }
+            });
+        });
+
+        $('#btn-buscar-slots').on('click', function() {
+            const selected_product_json = $('#product_selection').val();
+            const data_inicio = $('#data_inicio').val();
+            const data_fim = $('#data_fim').val();
+
+            if (!selected_product_json) {
+                showStatusMessage('#slots-status-message', 'Selecione um produto.', 'error');
+                return;
+            }
+
+            const selected_product = JSON.parse(selected_product_json);
+            // os_data_flask já está disponível no escopo do template, mas para o JS, é melhor pegar da sessão
+            // ou garantir que os_data_initial esteja atualizado.
+            // Para evitar problemas, vamos usar os_data_initial que é carregado no ready.
+            const os_data_current = os_data_initial; // Usar a variável carregada no ready
+
+            showStatusMessage('#slots-status-message', 'Buscando slots disponíveis...', 'info');
+
+            $.ajax({
+                url: '/buscar_slots_os',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    address_id: os_data_current.addressId,
+                    inventory_id: os_data_current.inventoryId,
+                    cp_selection: os_data_current.cp_selection,
+                    product_id: selected_product.id,
+                    product_type: selected_product.productType,
+                    data_inicio: data_inicio,
+                    data_fim: data_fim
+                }),
+                success: function(response) {
+                    if (response.status === 'sucesso') {
+                        showStatusMessage('#slots-status-message', response.message, 'success');
+                        $('#slots-list').empty();
+                        if (response.slots && response.slots.length > 0) {
+                            response.slots.forEach(function(slot) {
+                                const start_date = new Date(slot.startDate).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+                                const end_date = new Date(slot.finishDate).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+                                $('#slots-list').append(
+                                    `<label>
+                                        <input type="radio" name="selected_slot" value='${JSON.stringify(slot)}'>
+                                        <span>${start_date} - ${end_date}</span>
+                                    </label>`
+                                );
+                            });
+
+                            $('#slots-list input[name="selected_slot"]').on('change', function() {
+                                const selected_slot = JSON.parse($(this).val());
+                                const selected_product = JSON.parse($('#product_selection').val());
+                                const start_date_final = new Date(selected_slot.startDate).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+                                const end_date_final = new Date(selected_slot.finishDate).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+
+                                $('#final-product-name').text(`${selected_product.name} (${selected_product.productType})`);
+                                $('#final-slot-details').text(`${start_date_final} - ${end_date_final}`);
+
+                                $('.flow-section').removeClass('active');
+                                $('#confirmation-section').addClass('active');
+                            });
+                        } else {
+                            $('#slots-list').append('<p>Nenhum slot disponível.</p>');
+                        }
+                    } else {
+                        showStatusMessage('#slots-status-message', `Erro: ${response.message}`, 'error');
+                    }
+                },
+                error: function(xhr) {
+                    const error_response = xhr.responseJSON || { message: 'Erro desconhecido.' };
+                    showStatusMessage('#slots-status-message', `Erro: ${error_response.message}`, 'error');
+                }
+            });
+        });
+
+        $('#btn-confirmar-os').on('click', function() {
+            const selected_slot_json = $('input[name="selected_slot"]:checked').val();
+            const selected_product_json = $('#product_selection').val();
+            // REMOVIDO: const complemento_manual_os = $('#complemento_manual_os').val(); // Este campo foi removido
+
+            showStatusMessage('#os-creation-status-message', 'Confirmando Ordem de Serviço...', 'info');
+
+            $.ajax({
+                url: '/abertura_os_confirmar',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    selected_slot: JSON.parse(selected_slot_json),
+                    selected_product: JSON.parse(selected_product_json)
+                    // REMOVIDO: complemento_manual do data
+                }),
+                success: function(response) {
+                    if (response.status === 'sucesso') {
+                        // Monta a mensagem incluindo o Documento, o Agendamento (SA) e a Ordem
+                        const msgSucesso = `OS criada com sucesso! Documento: ${response.data.associated_document} | Agendamento: ${response.data.appointment_id} | Ordem: ${response.data.order_id}`;
+
+                        showStatusMessage('#os-creation-status-message', msgSucesso, 'success');
+
+                        // Opcional: Se quiser um alerta visual mais chamativo (caso use SweetAlert2)
+                        // Swal.fire('Sucesso!', msgSucesso, 'success');
+
+                    } else {
+                        showStatusMessage('#os-creation-status-message', `Erro ao criar OS: ${response.message}`, 'error');
+                    }
+                },
+                error: function(xhr) {
+                    const error_response = xhr.responseJSON || { message: 'Erro desconhecido.' };
+                    showStatusMessage('#os-creation-status-message', `Erro: ${error_response.message}`, 'error');
+                }
+            });
+        });
+
+        // Carregamento inicial da sessão
+        const os_data_initial = {{ os_data | tojson }};
+        if (os_data_initial.addressId) {
+            $('#address-description-display').text(os_data_initial.address_description);
+            $('#product-address-description-display').text(os_data_initial.address_description);
+            $('#final-address-description').text(os_data_initial.address_description);
+
+            // LÓGICA INTELIGENTE DE COMPLEMENTOS (LOAD DA PÁGINA)
+            if (os_data_initial.complements_found && os_data_initial.complements_found.length > 0) {
+                $('#complemento_selecionado').empty().append('<option value="">Selecione um complemento (Opcional)</option>');
+                os_data_initial.complements_found.forEach(function(comp_item) {
+                    let comp_data = null;
+
+                    if (comp_item.complement && comp_item.complement.complements && comp_item.complement.complements.length > 0) {
+                        comp_data = comp_item.complement.complements[0];
+                    } else if (comp_item.value && comp_item.type) {
+                        comp_data = comp_item;
+                    }
+
+                    if (comp_data) {
+                        const desc = comp_data.description || comp_data.type;
+                        const comp_text = `${desc}: ${comp_data.value}`;
+                        $('#complemento_selecionado').append(
+                            `<option value='${JSON.stringify(comp_data)}'>${comp_text}</option>`
+                        );
+                    }
+                });
+            }
+            $('.flow-section').removeClass('active');
+            $('#complement-selection-section').addClass('active');
+        }
+    });
+</script>
+{% endblock %}

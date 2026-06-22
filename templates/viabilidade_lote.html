@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card" style="max-width: 800px; margin: 0 auto;">
+    <h2 style="text-align: center; margin-bottom: 20px;">Viabilidade em Lotes</h2>
+    <p style="text-align: center; color: #666; margin-bottom: 30px;">
+        Faça o upload da sua planilha (.xlsx ou .csv) para verificar a viabilidade de múltiplos endereços de uma só vez.
+    </p>
+
+    <div class="form-section">
+        <label style="font-weight: bold; display: block; margin-bottom: 10px;">1. Selecione a Client Partner (CP):</label>
+        <select id="cp_selection" class="form-control" style="margin-bottom: 20px;">
+            {% for cp in available_cps %}
+                <option value="{{ cp }}">{{ cp }}</option>
+            {% endfor %}
+        </select>
+
+        <label style="font-weight: bold; display: block; margin-bottom: 10px;">2. Selecione o Arquivo:</label>
+        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+            <input type="file" id="lote_file" accept=".xlsx, .csv" class="form-control" style="flex: 1;">
+            <span style="font-size: 0.85em; color: #666;">A planilha deve conter as colunas "CEP" e "Nº fachada".</span>
+        </div>
+
+        <button id="btn-processar-lote" class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 1.1em;">
+            Processar Lote
+        </button>
+    </div>
+
+    <div id="lote-status-message" class="status-message" style="display: none; margin-top: 20px;"></div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    function showStatusMessage(elementId, message, type) {
+        const el = $(elementId);
+        el.removeClass('success error info').addClass(type).text(message).show();
+    }
+
+    $(document).ready(function() {
+        $('#btn-processar-lote').click(function() {
+            const fileInput = document.getElementById('lote_file');
+            const cpSelection = $('#cp_selection').val();
+
+            if (fileInput.files.length === 0) {
+                showStatusMessage('#lote-status-message', 'Por favor, selecione um arquivo.', 'error');
+                return;
+            }
+
+            let formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('cp_selection', cpSelection);
+
+            $('#btn-processar-lote').prop('disabled', true).text('Processando... Isso pode levar alguns minutos.');
+            showStatusMessage('#lote-status-message', 'Enviando arquivo e processando viabilidades...', 'info');
+
+            $.ajax({
+                url: '/api/viabilidade_lote',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                xhrFields: {
+                    responseType: 'blob' // Importante para o download do Excel
+                },
+                success: function(blob, status, xhr) {
+                    $('#btn-processar-lote').prop('disabled', false).text('Processar Lote');
+                    showStatusMessage('#lote-status-message', 'Processamento concluído! O download começará em instantes.', 'success');
+
+                    // Lógica para forçar o download do arquivo retornado
+                    let link = document.createElement('a');
+                    link.href = window.URL.createObjectURL(blob);
+                    link.download = 'Resultado_Viabilidade_Lote.xlsx';
+                    link.click();
+                },
+                error: function(xhr) {
+                    $('#btn-processar-lote').prop('disabled', false).text('Processar Lote');
+
+                    // Como o retorno esperado era blob, precisamos ler o erro como texto
+                    if (xhr.responseType === 'blob') {
+                        xhr.response.text().then(text => {
+                            try {
+                                let err = JSON.parse(text);
+                                showStatusMessage('#lote-status-message', 'Erro: ' + err.error, 'error');
+                            } catch (e) {
+                                showStatusMessage('#lote-status-message', 'Erro ao processar o lote.', 'error');
+                            }
+                        });
+                    } else {
+                        showStatusMessage('#lote-status-message', 'Erro ao processar o lote. Verifique o console.', 'error');
+                    }
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

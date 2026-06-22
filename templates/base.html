@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>V.tal Portal de Ordens de Serviço</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #FFD700; /* Amarelo V.tal */
+            --secondary-color: #333333; /* Preto quase cinza */
+            --text-color: #333333;
+            --background-light: #f0f2f5; /* Cinza claro para o fundo */
+            --background-card: #ffffff; /* Branco para cards */
+            --border-color: #e0e0e0;
+            --shadow-light: rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-light);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        header {
+            background-color: var(--secondary-color);
+            color: var(--primary-color);
+            padding: 1rem 0;
+            box-shadow: 0 2px 4px var(--shadow-light);
+            text-align: center;
+        }
+
+        header .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: center; /* Centraliza o título */
+            align-items: center;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        header h1 a {
+            color: var(--primary-color);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        header h1 a:hover {
+            color: #fff; /* Branco no hover para contraste */
+        }
+
+        .content-wrapper {
+            display: flex;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+
+        .container-card {
+            background-color: var(--background-card);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px var(--shadow-light);
+            padding: 2rem;
+            max-width: 800px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        h2 {
+            color: var(--secondary-color);
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        /* Estilos para formulários e botões */
+        form {
+            margin-top: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        input[type="date"],
+        select {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: var(--secondary-color);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 700;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #e6c200; /* Um tom mais escuro de amarelo */
+            color: #000;
+        }
+
+        .message {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        /* Estilos para a página inicial com os ícones */
+        .options-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 30px; /* Espaçamento entre os itens */
+            margin-top: 2rem;
+        }
+
+        .option-item {
+            background-color: var(--background-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px var(--shadow-light);
+            padding: 20px;
+            text-align: center;
+            text-decoration: none;
+            color: var(--text-color);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            width: 250px; /* Largura fixa para cada item */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .option-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 16px var(--shadow-light);
+        }
+
+        .option-item img {
+            width: 80px; /* Tamanho do ícone */
+            height: 80px;
+            margin-bottom: 15px;
+            object-fit: contain;
+        }
+
+        .option-item h3 {
+            margin: 0 0 10px 0;
+            font-size: 1.2rem;
+            color: var(--secondary-color);
+        }
+
+        .option-item p {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        /* Estilos para o seletor de CP */
+        .cp-selection-container {
+            margin-bottom: 1rem;
+        }
+        .cp-selection-container label {
+            margin-bottom: 0.5rem;
+        }
+        .cp-selection-container select {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1><a href="/">V.tal Portal de Ordens de Serviço</a></h1>
+        </div>
+    </header>
+    <div class="content-wrapper">
+        <div class="container-card">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+</body>
+</html>
