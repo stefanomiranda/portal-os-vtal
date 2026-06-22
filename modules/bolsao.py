@@ -6,7 +6,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-DATABASE_FILE = 'bolsao_os.db'
+DATABASE_FILE = '/mnt/data/bolsao_os.db'
 
 def init_db():
     """Inicializa o banco de dados e cria a tabela se ela não existir."""
