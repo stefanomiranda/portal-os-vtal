@@ -40,14 +40,14 @@ requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 # Definir URLs das APIs
-os.environ['BASE_HOST'] = 'https://apitrg.vtal.com.br'
-os.environ['TOKEN_URL'] = f"{os.environ.get('BASE_HOST')}/auth/oauth/v2/token"
-os.environ['BASE_ADDRESS_URL'] = f"{os.environ.get('BASE_HOST')}/api/geographicAddressManagement/v1/geographicAddress"
-os.environ['BASE_ADDRESS_COMPLEMENTS_URL'] = f"{os.environ.get('BASE_HOST')}/api/geographicAddressManagement/v1/addressComplements"
-os.environ['BASE_AVAILABILITY_URL'] = f"{os.environ.get('BASE_HOST')}/api/resourcePoolManagement/v2/availabilityCheck"
-os.environ['BASE_APPOINTMENT_URL'] = f"{os.environ.get('BASE_HOST')}/api/appointment/v2/searchTimeSlot"
-os.environ['BASE_APPOINTMENT_URL_V2'] = f"{os.environ.get('BASE_HOST')}/api/appointment/v2/appointment"
-os.environ['BASE_PRODUCT_ORDER_URL'] = f"{os.environ.get('BASE_HOST')}/api/productOrdering/v2/productOrder"
+BASE_HOST = os.environ.get('BASE_HOST', 'https://apitrg.vtal.com.br')
+TOKEN_URL = os.environ.get('TOKEN_URL', f"{BASE_HOST}/auth/oauth/v2/token")
+BASE_ADDRESS_URL = os.environ.get('BASE_ADDRESS_URL', f"{BASE_HOST}/api/geographicAddressManagement/v1/geographicAddress")
+BASE_ADDRESS_COMPLEMENTS_URL = os.environ.get('BASE_ADDRESS_COMPLEMENTS_URL', f"{BASE_HOST}/api/geographicAddressManagement/v1/addressComplements")
+BASE_AVAILABILITY_URL = os.environ.get('BASE_AVAILABILITY_URL', f"{BASE_HOST}/api/resourcePoolManagement/v2/availabilityCheck")
+BASE_APPOINTMENT_URL = os.environ.get('BASE_APPOINTMENT_URL', f"{BASE_HOST}/api/appointment/v2/searchTimeSlot")
+BASE_APPOINTMENT_URL_V2 = os.environ.get('BASE_APPOINTMENT_URL_V2', f"{BASE_HOST}/api/appointment/v2/appointment")
+BASE_PRODUCT_ORDER_URL = os.environ.get('BASE_PRODUCT_ORDER_URL', f"{BASE_HOST}/api/productOrdering/v2/productOrder")
 
 # Inicializa o banco de dados do bolsão ao iniciar a aplicação
 with app.app_context():
@@ -64,8 +64,6 @@ def datetimeformat(value, format='%d/%m/%Y %H:%M:%S'):
         return dt_object.strftime(format)
     except ValueError:
         return value # Retorna o valor original se não conseguir formatar
-
-app.secret_key = os.urandom(24)
 
 @app.route('/')
 def index():
